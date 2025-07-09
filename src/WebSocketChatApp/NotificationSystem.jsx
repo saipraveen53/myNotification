@@ -118,99 +118,75 @@ const NotificationSystem = () => {
           }}
         >
           <button
+            className="all btn btn-sm btn-primary"
             onClick={() => setTab("All")}
-            style={{
-              padding: "6px 16px",
-              borderRadius: 4,
-              border: "1px solid #444",
-              background: tab === "All" ? "#2e7d32" : "#181818",
-              color: tab === "All" ? "#fff" : "#ccc",
-              marginRight: 6,
-              cursor: "pointer",
-            }}
+            // style={{
+            //   padding: "6px 16px",
+            //   borderRadius: 4,
+            //   border: "1px solid #444",
+            //   background: tab === "All" ? "#2e7d32" : "#181818",
+            //   color: tab === "All" ? "#fff" : "#ccc",
+            //   marginRight: 6,
+            //   cursor: "pointer",
+            // }}
           >
             All
           </button>
           <button
+            className="unread btn btn-sm btn-info"
             onClick={() => setTab("Unread")}
-            style={{
-              padding: "6px 16px",
-              borderRadius: 4,
-              border: "1px solid #444",
-              background: tab === "Unread" ? "#2e7d32" : "#181818",
-              color: tab === "Unread" ? "#fff" : "#ccc",
-              marginRight: 16,
-              cursor: "pointer",
-            }}
+            // style={{
+            //   padding: "6px 16px",
+            //   borderRadius: 4,
+            //   border: "1px solid #444",
+            //   background: tab === "Unread" ? "#2e7d32" : "#181818",
+            //   color: tab === "Unread" ? "#fff" : "#ccc",
+            //   marginRight: 16,
+            //   cursor: "pointer",
+            // }}
           >
             Unread
           </button>
           <input
+            className="searchfeild"
             type="text"
             placeholder="Search notifications"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{
-              flex: 1,
-              padding: "6px 10px",
-              borderRadius: 4,
-              border: "1px solid #444",
-              background: "#181818",
-              color: "#eee",
-              minWidth: 0,
-              marginRight: 16,
-            }}
           />
           <input
             type="datetime-local"
+            className="dateInput start"
             value={startdate}
             onChange={(e) => setStartDate(e.target.value)}
-            style={{
-              padding: "10px",
-              border: "1px solid #444",
-              borderRadius: "6px",
-              backgroundColor: "#1e1e1e",
-              color: "#eee",
-              fontSize: "14px",
-              width: "200px",
-              cursor: "pointer",
-            }}
           />
           <input
             type="datetime-local"
+            className="dateInput end"
             value={enddate}
             onChange={(e) => setEndDate(e.target.value)}
-            style={{
-              padding: "10px",
-              border: "1px solid #444",
-              borderRadius: "6px",
-              backgroundColor: "#1e1e1e",
-              color: "#eee",
-              fontSize: "14px",
-              width: "200px",
-              cursor: "pointer",
-            }}
           />
           <button
+            className="btn btn-sm btn-success"
             onClick={() => {
               setTab("All");
               setSearch("");
               setStartDate("");
               setEndDate("");
             }}
-            style={{
-              marginLeft: 8,
-              padding: "6px 14px",
-              borderRadius: 4,
-              border: "1px solid #888",
-              background: "#333",
-              color: "#fff",
-              cursor: "pointer",
-              width: "75px",
-              height: "45px",
-              backgroundColor: "orange",
-              borderRadius: "8px",
-            }}
+            // style={{
+            //   marginLeft: 8,
+            //   padding: "6px 14px",
+            //   borderRadius: 4,
+            //   border: "1px solid #888",
+            //   background: "#333",
+            //   color: "#fff",
+            //   cursor: "pointer",
+            //   width: "75px",
+            //   height: "45px",
+            //   backgroundColor: "orange",
+            //   borderRadius: "8px",
+            // }}
           >
             Clear
           </button>
@@ -219,6 +195,7 @@ const NotificationSystem = () => {
           {editMode ? (
             <>
               <button
+                className="btn btn-sm btn-danger"
                 onClick={() => {
                   if (selectedIds.length > 0) {
                     setGdata((prev) =>
@@ -228,38 +205,39 @@ const NotificationSystem = () => {
                   }
                   setEditMode(false);
                 }}
-                style={{
-                  marginLeft: 8,
-                  padding: "6px 14px",
-                  borderRadius: 4,
-                  border: "1px solid #888",
-                  background: "#7b1e1e",
-                  color: "#fff",
-                  cursor: "pointer",
-                  height: "45px",
-                  borderRadius: "10px",
-                  backgroundColor: "red",
-                }}
+                // style={{
+                //   marginLeft: 8,
+                //   padding: "6px 14px",
+                //   borderRadius: 4,
+                //   border: "1px solid #888",
+                //   background: "#7b1e1e",
+                //   color: "#fff",
+                //   cursor: "pointer",
+                //   height: "45px",
+                //   borderRadius: "10px",
+                //   backgroundColor: "red",
+                // }}
               >
                 Delete
               </button>
               <button
+                className="btn btn-sm btn-info"
                 onClick={() => {
                   setEditMode(false);
                   setSelectedIds([]);
                 }}
-                style={{
-                  marginLeft: 8,
-                  padding: "6px 14px",
-                  borderRadius: 4,
-                  border: "1px solid #888",
-                  background: "#555",
-                  color: "#fff",
-                  cursor: "pointer",
-                  height: "45px",
-                  borderRadius: "10px",
-                  backgroundColor: "#a3be8c",
-                }}
+                // style={{
+                //   marginLeft: 8,
+                //   padding: "6px 14px",
+                //   borderRadius: 4,
+                //   border: "1px solid #888",
+                //   background: "#555",
+                //   color: "#fff",
+                //   cursor: "pointer",
+                //   height: "45px",
+                //   borderRadius: "10px",
+                //   backgroundColor: "#a3be8c",
+                // }}
               >
                 Cancel
               </button>
@@ -267,18 +245,19 @@ const NotificationSystem = () => {
           ) : (
             <button
               onClick={() => setEditMode(true)}
-              style={{
-                marginLeft: 8,
-                padding: "6px 14px",
-                borderRadius: 4,
-                border: "1px solid #888",
-                background: "#555",
-                color: "#fff",
-                cursor: "pointer",
-                height: "45px",
-                borderRadius: "10px",
-                backgroundColor: "#00bfff",
-              }}
+              className="btn btn-sm btn-primary"
+              // style={{
+              //   marginLeft: 8,
+              //   padding: "6px 14px",
+              //   borderRadius: 4,
+              //   border: "1px solid #888",
+              //   background: "#555",
+              //   color: "#fff",
+              //   cursor: "pointer",
+              //   height: "45px",
+              //   borderRadius: "10px",
+              //   backgroundColor: "#00bfff",
+              // }}
             >
               Edit
             </button>
@@ -361,17 +340,15 @@ const NotificationSystem = () => {
                     display: "flex",
                     justifyContent: "center",
                     alignItems: "center",
-                    marginTop: 20,
+                    marginTop: 50,
                     gap: 16,
                   }}
                 >
                   <button
+                    className="btn btn-sm btn-primary"
                     onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
                     disabled={currentPage === 1}
                     style={{
-                      padding: "6px 12px",
-                      background: "#333",
-                      color: "#fff",
                       border: "1px solid #555",
                       borderRadius: 4,
                       cursor: "pointer",
@@ -383,14 +360,14 @@ const NotificationSystem = () => {
                     Page {currentPage} of {totalPages}
                   </span>
                   <button
+                    className=" btn btn-sm btn-warning"
                     onClick={() =>
                       setCurrentPage((p) => Math.min(p + 1, totalPages))
                     }
                     disabled={currentPage === totalPages}
                     style={{
                       padding: "6px 12px",
-                      background: "#333",
-                      color: "#fff",
+
                       border: "1px solid #555",
                       borderRadius: 4,
                       cursor: "pointer",
