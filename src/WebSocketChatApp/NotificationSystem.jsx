@@ -8,9 +8,9 @@ const NotificationSystem = () => {
 
   const [tab, setTab] = useState("All");
   const [search, setSearch] = useState("");
-  const [popup, setPopup] = useState(null);
   const [startdate, setStartDate] = useState("");
   const [enddate, setEndDate] = useState("");
+  const [senderFilter, setSenderFilter] = useState("");
   const [filtereddata, setFilteredData] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [editMode, setEditMode] = useState(false);
@@ -23,13 +23,18 @@ const NotificationSystem = () => {
       if (tab === "Unread" && msg.seen) return false;
       if (search && !msg.from.toLowerCase().includes(search.toLowerCase()))
         return false;
+      if (
+        senderFilter &&
+        !msg.message.toLowerCase().includes(senderFilter.toLowerCase())
+      )
+        return false;
       const msgDate = new Date(msg.timestamp);
       if (startdate && msgDate < new Date(startdate)) return false;
       if (enddate && msgDate > new Date(enddate)) return false;
       return true;
     });
     setFilteredData(filtered);
-  }, [gdata, tab, search, startdate, enddate]);
+  }, [gdata, tab, search, senderFilter, startdate, enddate]);
 
   useEffect(() => {
     handleSearch();
@@ -38,7 +43,7 @@ const NotificationSystem = () => {
   useEffect(() => {
     setCurrentPage(1);
     handleSearch();
-  }, [tab, search, startdate, enddate, handleSearch]);
+  }, [tab, search, senderFilter, startdate, enddate, handleSearch]);
 
   const handleView = (id) => {
     if (editMode) return;
@@ -48,24 +53,42 @@ const NotificationSystem = () => {
     navigate(`/msg/${id}`);
   };
 
+  // ✅ SYSTEM NOTIFICATION EFFECT
   useEffect(() => {
     if (!lastSseMsgId) return;
+
     const newMsg = gdata.find((msg) => msg.id === lastSseMsgId);
-    setPopup(newMsg);
-    setTimeout(() => setPopup(null), 3000);
+    if (!newMsg) return;
+
+    // 🔔 System Notification Logic
+    if ("Notification" in window) {
+      if (Notification.permission === "granted") {
+        new Notification(`📬 ${newMsg.from}`, {
+          body: newMsg.message,
+          icon: "/favicon.ico",
+        });
+      } else if (Notification.permission !== "denied") {
+        Notification.requestPermission().then((permission) => {
+          if (permission === "granted") {
+            new Notification(`📬 ${newMsg.from}`, {
+              body: newMsg.message,
+              icon: "/favicon.ico",
+            });
+          }
+        });
+      }
+    }
   }, [lastSseMsgId, gdata]);
+
+  useEffect(() => {
+    if (!editMode) setSelectedIds([]);
+  }, [editMode]);
 
   const totalPages = Math.ceil(filtereddata.length / itemsPerPage);
   const paginatedData = filtereddata.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
-
-  useEffect(() => {
-    if (!editMode) {
-      setSelectedIds([]);
-    }
-  }, [editMode]);
 
   return (
     <div
@@ -92,8 +115,26 @@ const NotificationSystem = () => {
         }}
       >
         <div style={{ fontWeight: "bold", marginBottom: 12 }}>Inbox</div>
+        <div style={{ marginLeft: 30, marginTop: 30 }}>
+          <ul style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {["ATTENDANCE", "LEAVE", "PERFOMANCE", "FINANCE"].map((role) => (
+              <li
+                key={role}
+                onClick={() => setSenderFilter(role)}
+                style={{
+                  cursor: "pointer",
+                  color: senderFilter === role ? "#4af" : "#ccc",
+                  fontWeight: senderFilter === role ? "bold" : "normal",
+                }}
+              >
+                {role}
+              </li>
+            ))}
+          </ul>
+        </div>
       </aside>
 
+      {/* Main Content */}
       <div
         style={{
           flex: 1,
@@ -106,66 +147,101 @@ const NotificationSystem = () => {
         <div
           style={{
             display: "flex",
-            flexDirection: "row",
+            alignItems: "center",
+            gap: 12,
             position: "sticky",
             top: 0,
             background: "#232323",
             padding: "10px 16px",
             borderBottom: "1px solid #333",
-            alignItems: "center",
-            gap: 12,
             zIndex: 10,
           }}
         >
           <button
-            className="all btn btn-sm btn-primary"
+            className="btn btn-sm btn-primary"
             onClick={() => setTab("All")}
-            // style={{
-            //   padding: "6px 16px",
-            //   borderRadius: 4,
-            //   border: "1px solid #444",
-            //   background: tab === "All" ? "#2e7d32" : "#181818",
-            //   color: tab === "All" ? "#fff" : "#ccc",
-            //   marginRight: 6,
-            //   cursor: "pointer",
-            // }}
           >
             All
           </button>
           <button
-            className="unread btn btn-sm btn-info"
+            className="btn btn-sm btn-info"
             onClick={() => setTab("Unread")}
-            // style={{
-            //   padding: "6px 16px",
-            //   borderRadius: 4,
-            //   border: "1px solid #444",
-            //   background: tab === "Unread" ? "#2e7d32" : "#181818",
-            //   color: tab === "Unread" ? "#fff" : "#ccc",
-            //   marginRight: 16,
-            //   cursor: "pointer",
-            // }}
           >
             Unread
           </button>
+
           <input
-            className="searchfeild"
             type="text"
+            className="searchfeild"
             placeholder="Search notifications"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
-          <input
-            type="datetime-local"
-            className="dateInput start"
-            value={startdate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-          <input
-            type="datetime-local"
-            className="dateInput end"
-            value={enddate}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
+
+          {/* From Date */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              position: "relative",
+            }}
+          >
+            <span style={{ marginRight: 4 }}>From:</span>
+            <input
+              type="date"
+              id="start-date"
+              value={startdate}
+              onChange={(e) => setStartDate(e.target.value)}
+              style={{
+                opacity: 0,
+                position: "absolute",
+                left: 45,
+                top: 0,
+                width: 24,
+                height: 24,
+                cursor: "pointer",
+              }}
+            />
+            <i
+              className="fa-solid fa-calendar-days"
+              title="Start Date"
+              onClick={() => document.getElementById("start-date").click()}
+              style={{ fontSize: 18, color: "#ccc", cursor: "pointer" }}
+            ></i>
+          </div>
+
+          {/* To Date */}
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              position: "relative",
+            }}
+          >
+            <span style={{ marginRight: 4 }}>To:</span>
+            <input
+              type="date"
+              id="end-date"
+              value={enddate}
+              onChange={(e) => setEndDate(e.target.value)}
+              style={{
+                opacity: 0,
+                position: "absolute",
+                left: 35,
+                top: 0,
+                width: 24,
+                height: 24,
+                cursor: "pointer",
+              }}
+            />
+            <i
+              className="fa-solid fa-calendar-days"
+              title="End Date"
+              onClick={() => document.getElementById("end-date").click()}
+              style={{ fontSize: 18, color: "#ccc", cursor: "pointer" }}
+            ></i>
+          </div>
+
           <button
             className="btn btn-sm btn-success"
             onClick={() => {
@@ -173,97 +249,43 @@ const NotificationSystem = () => {
               setSearch("");
               setStartDate("");
               setEndDate("");
+              setSenderFilter("");
             }}
-            // style={{
-            //   marginLeft: 8,
-            //   padding: "6px 14px",
-            //   borderRadius: 4,
-            //   border: "1px solid #888",
-            //   background: "#333",
-            //   color: "#fff",
-            //   cursor: "pointer",
-            //   width: "75px",
-            //   height: "45px",
-            //   backgroundColor: "orange",
-            //   borderRadius: "8px",
-            // }}
           >
             Clear
           </button>
 
-          {/* Edit/Delete/Cancel Buttons */}
           {editMode ? (
             <>
               <button
                 className="btn btn-sm btn-danger"
                 onClick={() => {
-                  if (selectedIds.length > 0) {
-                    setGdata((prev) =>
-                      prev.filter((msg) => !selectedIds.includes(msg.id))
-                    );
-                    setSelectedIds([]);
-                  }
+                  setGdata((prev) =>
+                    prev.filter((msg) => !selectedIds.includes(msg.id))
+                  );
+                  setSelectedIds([]);
                   setEditMode(false);
                 }}
-                // style={{
-                //   marginLeft: 8,
-                //   padding: "6px 14px",
-                //   borderRadius: 4,
-                //   border: "1px solid #888",
-                //   background: "#7b1e1e",
-                //   color: "#fff",
-                //   cursor: "pointer",
-                //   height: "45px",
-                //   borderRadius: "10px",
-                //   backgroundColor: "red",
-                // }}
               >
                 Delete
               </button>
               <button
                 className="btn btn-sm btn-info"
-                onClick={() => {
-                  setEditMode(false);
-                  setSelectedIds([]);
-                }}
-                // style={{
-                //   marginLeft: 8,
-                //   padding: "6px 14px",
-                //   borderRadius: 4,
-                //   border: "1px solid #888",
-                //   background: "#555",
-                //   color: "#fff",
-                //   cursor: "pointer",
-                //   height: "45px",
-                //   borderRadius: "10px",
-                //   backgroundColor: "#a3be8c",
-                // }}
+                onClick={() => setEditMode(false)}
               >
                 Cancel
               </button>
             </>
           ) : (
             <button
-              onClick={() => setEditMode(true)}
               className="btn btn-sm btn-primary"
-              // style={{
-              //   marginLeft: 8,
-              //   padding: "6px 14px",
-              //   borderRadius: 4,
-              //   border: "1px solid #888",
-              //   background: "#555",
-              //   color: "#fff",
-              //   cursor: "pointer",
-              //   height: "45px",
-              //   borderRadius: "10px",
-              //   backgroundColor: "#00bfff",
-              // }}
+              onClick={() => setEditMode(true)}
             >
               Edit
             </button>
           )}
 
-          <div className="notif-bell-wrap">
+          <div className="notif-bell-wrap" style={{ marginLeft: "auto" }}>
             <i className="fa-regular fa-bell notif-bell"></i>
             <span className="notif-bell-count">
               {gdata.filter((msg) => !msg.seen).length}
@@ -271,113 +293,74 @@ const NotificationSystem = () => {
           </div>
         </div>
 
-        {/* Main content */}
+        {/* Notification List */}
         <main style={{ flex: 1, overflowY: "auto", padding: 18 }}>
           {paginatedData.length > 0 ? (
-            <>
-              {paginatedData.map((msg) => (
-                <div
-                  className="hoveringdiv"
-                  onClick={() => handleView(msg.id)}
-                  key={msg.id}
-                  style={{
-                    cursor: editMode ? "default" : "pointer",
-                    borderRadius: 5,
-                    padding: 12,
-                    marginBottom: 12,
-                    borderLeft: `4px solid ${msg.seen ? "#666" : "#2e7d32"}`,
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    backgroundImage: msg.seen
-                      ? "linear-gradient(135deg, #495057, #86a17d)"
-                      : "linear-gradient(135deg, #4F84C4, #9932cc)",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center" }}>
-                    {editMode && (
-                      <input
-                        type="checkbox"
-                        checked={selectedIds.includes(msg.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            setSelectedIds((prev) => [...prev, msg.id]);
-                          } else {
-                            setSelectedIds((prev) =>
-                              prev.filter((id) => id !== msg.id)
-                            );
-                          }
-                        }}
-                        style={{ marginRight: 10 }}
-                      />
-                    )}
-                    <div style={{ display: "flex", flexDirection: "column" }}>
-                      <div style={{ fontWeight: "bold", color: "#4af" }}>
-                        {msg.from}
-                      </div>
-                      <div style={{ margin: "4px 0", color: "#eee" }}>
-                        {msg.message.slice(0, 50)}...
-                      </div>
+            paginatedData.map((msg) => (
+              <div
+                key={msg.id}
+                className="hoveringdiv"
+                onClick={() =>
+                  editMode
+                    ? setSelectedIds((prev) =>
+                        prev.includes(msg.id)
+                          ? prev.filter((id) => id !== msg.id)
+                          : [...prev, msg.id]
+                      )
+                    : handleView(msg.id)
+                }
+                style={{
+                  cursor: "pointer",
+                  borderRadius: 5,
+                  padding: 12,
+                  marginBottom: 12,
+                  borderLeft: `4px solid ${msg.seen ? "#666" : "#2e7d32"}`,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  backgroundImage: msg.seen
+                    ? "linear-gradient(135deg, #495057, #86a17d)"
+                    : "linear-gradient(135deg, #4F84C4, #9932cc)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center" }}>
+                  {editMode && (
+                    <i
+                      className={`fa-solid ${
+                        selectedIds.includes(msg.id)
+                          ? "fa-circle-check"
+                          : "fa-circle"
+                      }`}
+                      style={{
+                        marginRight: 10,
+                        fontSize: 20,
+                        color: selectedIds.includes(msg.id)
+                          ? "#00e676"
+                          : "#aaa",
+                      }}
+                    ></i>
+                  )}
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    <div style={{ fontWeight: "bold", color: "#4af" }}>
+                      {msg.from}
+                    </div>
+                    <div style={{ margin: "4px 0", color: "#eee" }}>
+                      {msg.message.slice(0, 50)}...
                     </div>
                   </div>
-                  <div
-                    style={{
-                      fontSize: 12,
-                      color: "white",
-                      marginLeft: 16,
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    {new Date(msg.timestamp).toLocaleString()}
-                  </div>
                 </div>
-              ))}
-
-              {/* Pagination */}
-              {totalPages > 1 && (
                 <div
                   style={{
-                    display: "flex",
-                    justifyContent: "center",
-                    alignItems: "center",
-                    marginTop: 50,
-                    gap: 16,
+                    fontSize: 12,
+                    color: "white",
+                    marginLeft: 16,
+                    whiteSpace: "nowrap",
                   }}
                 >
-                  <button
-                    className="btn btn-sm btn-primary"
-                    onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-                    disabled={currentPage === 1}
-                    style={{
-                      border: "1px solid #555",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Prev
-                  </button>
-                  <span style={{ color: "#ccc" }}>
-                    Page {currentPage} of {totalPages}
-                  </span>
-                  <button
-                    className=" btn btn-sm btn-warning"
-                    onClick={() =>
-                      setCurrentPage((p) => Math.min(p + 1, totalPages))
-                    }
-                    disabled={currentPage === totalPages}
-                    style={{
-                      padding: "6px 12px",
-
-                      border: "1px solid #555",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                    }}
-                  >
-                    Next
-                  </button>
+                  {new Date(msg.timestamp).toLocaleString()}
                 </div>
-              )}
-            </>
+              </div>
+            ))
           ) : (
             <div
               style={{
@@ -396,39 +379,41 @@ const NotificationSystem = () => {
               </div>
             </div>
           )}
+
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "center",
+                alignItems: "center",
+                marginTop: 50,
+                gap: 16,
+              }}
+            >
+              <button
+                className="btn btn-sm btn-primary"
+                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                disabled={currentPage === 1}
+              >
+                Prev
+              </button>
+              <span style={{ color: "#ccc" }}>
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                className="btn btn-sm btn-warning"
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(p + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </button>
+            </div>
+          )}
         </main>
       </div>
-
-      {/* Popup Notification */}
-      {popup && (
-        <div
-          onClick={() => handleView(popup.id)}
-          style={{
-            position: "fixed",
-            cursor: "pointer",
-            left: 24,
-            bottom: 24,
-            background: "linear-gradient(135deg,blue,red)",
-            color: "#fff",
-            padding: "14px 24px",
-            borderRadius: 6,
-            boxShadow: "0 2px 8px #0008",
-            display: "flex",
-            alignItems: "center",
-            zIndex: 100,
-            animation: "slideInLeft 0.5s",
-          }}
-        >
-          <i
-            className="fa-regular fa-bell"
-            style={{ fontSize: 22, marginRight: 12 }}
-          ></i>
-          <div>
-            <div style={{ fontWeight: "bold" }}>New Notification</div>
-            <div style={{ fontSize: 13 }}>{popup.message}</div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
