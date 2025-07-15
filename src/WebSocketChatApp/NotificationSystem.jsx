@@ -1,10 +1,15 @@
 import React, { useState, useContext, useEffect, useCallback } from "react";
 import { Context } from "./NotificationContext";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import axios from "axios";
 
 const NotificationSystem = () => {
   const navigate = useNavigate();
   const { gdata, setGdata, lastSseMsgId } = useContext(Context);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const page = searchParams.get("page") || "1";
+  const [currentPage, setCurrentPage] = useState(parseInt(page, 10));
 
   const [tab, setTab] = useState("All");
   const [search, setSearch] = useState("");
@@ -12,23 +17,26 @@ const NotificationSystem = () => {
   const [enddate, setEndDate] = useState("");
   const [senderFilter, setSenderFilter] = useState("");
   const [filtereddata, setFilteredData] = useState([]);
-  const [currentPage, setCurrentPage] = useState(1);
   const [editMode, setEditMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
-
   const itemsPerPage = 5;
+
+  useEffect(() => {
+    const pageFromUrl = parseInt(searchParams.get("page") || "1", 10);
+    setCurrentPage(pageFromUrl);
+  }, [searchParams]);
 
   const handleSearch = useCallback(() => {
     let filtered = gdata.filter((msg) => {
-      if (tab === "Unread" && msg.seen) return false;
-      if (search && !msg.from.toLowerCase().includes(search.toLowerCase()))
+      if (tab === "Unread" && msg.read) return false;
+      if (search && !msg.sender.toLowerCase().includes(search.toLowerCase()))
         return false;
       if (
         senderFilter &&
         !msg.message.toLowerCase().includes(senderFilter.toLowerCase())
       )
         return false;
-      const msgDate = new Date(msg.timestamp);
+      const msgDate = new Date(msg.createdAt);
       if (startdate && msgDate < new Date(startdate)) return false;
       if (enddate && msgDate > new Date(enddate)) return false;
       return true;
@@ -41,36 +49,49 @@ const NotificationSystem = () => {
   }, [gdata, handleSearch]);
 
   useEffect(() => {
-    setCurrentPage(1);
+    setSearchParams({ page: currentPage.toString() });
     handleSearch();
-  }, [tab, search, senderFilter, startdate, enddate, handleSearch]);
+  }, [
+    tab,
+    search,
+    senderFilter,
+    startdate,
+    enddate,
+    currentPage,
+    handleSearch,
+  ]);
 
-  const handleView = (id) => {
-    if (editMode) return;
-    setGdata((prev) =>
-      prev.map((msg) => (msg.id === id ? { ...msg, seen: true } : msg))
-    );
-    navigate(`/msg/${id}`);
+  const handleView = async (id) => {
+    try {
+      await axios.post(`http://localhost:8081/api/notifications/read/${id}`);
+    } catch (err) {
+      console.error(err);
+    }
+
+    if (!editMode) {
+      setGdata((prev) =>
+        prev.map((msg) => (msg.id === id ? { ...msg, read: true } : msg))
+      );
+      navigate(`/msg/${id}?page=${currentPage}`);
+    }
   };
 
-  // ✅ SYSTEM NOTIFICATION EFFECT
   useEffect(() => {
     if (!lastSseMsgId) return;
 
     const newMsg = gdata.find((msg) => msg.id === lastSseMsgId);
-    if (!newMsg) return;
+    if (!newMsg || newMsg.read) return;
 
-    // 🔔 System Notification Logic
     if ("Notification" in window) {
       if (Notification.permission === "granted") {
-        new Notification(`📬 ${newMsg.from}`, {
+        new Notification(`📬 ${newMsg.sender}`, {
           body: newMsg.message,
           icon: "/favicon.ico",
         });
       } else if (Notification.permission !== "denied") {
         Notification.requestPermission().then((permission) => {
           if (permission === "granted") {
-            new Notification(`📬 ${newMsg.from}`, {
+            new Notification(`📬 ${newMsg.sender}`, {
               body: newMsg.message,
               icon: "/favicon.ico",
             });
@@ -120,7 +141,10 @@ const NotificationSystem = () => {
             {["ATTENDANCE", "LEAVE", "PERFOMANCE", "FINANCE"].map((role) => (
               <li
                 key={role}
-                onClick={() => setSenderFilter(role)}
+                onClick={() => {
+                  setSenderFilter(role);
+                  setCurrentPage(1);
+                }}
                 style={{
                   cursor: "pointer",
                   color: senderFilter === role ? "#4af" : "#ccc",
@@ -159,13 +183,19 @@ const NotificationSystem = () => {
         >
           <button
             className="btn btn-sm btn-primary"
-            onClick={() => setTab("All")}
+            onClick={() => {
+              setTab("All");
+              setCurrentPage(1);
+            }}
           >
             All
           </button>
           <button
             className="btn btn-sm btn-info"
-            onClick={() => setTab("Unread")}
+            onClick={() => {
+              setTab("Unread");
+              setCurrentPage(1);
+            }}
           >
             Unread
           </button>
@@ -250,6 +280,7 @@ const NotificationSystem = () => {
               setStartDate("");
               setEndDate("");
               setSenderFilter("");
+              setCurrentPage(1);
             }}
           >
             Clear
@@ -288,12 +319,12 @@ const NotificationSystem = () => {
           <div className="notif-bell-wrap" style={{ marginLeft: "auto" }}>
             <i className="fa-regular fa-bell notif-bell"></i>
             <span className="notif-bell-count">
-              {gdata.filter((msg) => !msg.seen).length}
+              {gdata.filter((msg) => !msg.read).length}
             </span>
           </div>
         </div>
 
-        {/* Notification List */}
+        {/* Notifications */}
         <main style={{ flex: 1, overflowY: "auto", padding: 18 }}>
           {paginatedData.length > 0 ? (
             paginatedData.map((msg) => (
@@ -314,11 +345,11 @@ const NotificationSystem = () => {
                   borderRadius: 5,
                   padding: 12,
                   marginBottom: 12,
-                  borderLeft: `4px solid ${msg.seen ? "#666" : "#2e7d32"}`,
+                  borderLeft: `4px solid ${msg.read ? "#666" : "#2e7d32"}`,
                   display: "flex",
                   justifyContent: "space-between",
                   alignItems: "center",
-                  backgroundImage: msg.seen
+                  backgroundImage: msg.read
                     ? "linear-gradient(135deg, #495057, #86a17d)"
                     : "linear-gradient(135deg, #4F84C4, #9932cc)",
                 }}
@@ -342,7 +373,7 @@ const NotificationSystem = () => {
                   )}
                   <div style={{ display: "flex", flexDirection: "column" }}>
                     <div style={{ fontWeight: "bold", color: "#4af" }}>
-                      {msg.from}
+                      {msg.sender}
                     </div>
                     <div style={{ margin: "4px 0", color: "#eee" }}>
                       {msg.message.slice(0, 50)}...
@@ -357,7 +388,7 @@ const NotificationSystem = () => {
                     whiteSpace: "nowrap",
                   }}
                 >
-                  {new Date(msg.timestamp).toLocaleString()}
+                  {new Date(msg.createdAt).toLocaleString()}
                 </div>
               </div>
             ))
@@ -365,9 +396,8 @@ const NotificationSystem = () => {
             <div
               style={{
                 display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
                 justifyContent: "center",
+                alignItems: "center",
                 height: 200,
                 color: "#aaa",
               }}
@@ -393,7 +423,11 @@ const NotificationSystem = () => {
             >
               <button
                 className="btn btn-sm btn-primary"
-                onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
+                onClick={() => {
+                  const newPage = Math.max(currentPage - 1, 1);
+                  setCurrentPage(newPage);
+                  setSearchParams({ page: newPage.toString() });
+                }}
                 disabled={currentPage === 1}
               >
                 Prev
@@ -403,9 +437,11 @@ const NotificationSystem = () => {
               </span>
               <button
                 className="btn btn-sm btn-warning"
-                onClick={() =>
-                  setCurrentPage((p) => Math.min(p + 1, totalPages))
-                }
+                onClick={() => {
+                  const newPage = Math.min(currentPage + 1, totalPages);
+                  setCurrentPage(newPage);
+                  setSearchParams({ page: newPage.toString() });
+                }}
                 disabled={currentPage === totalPages}
               >
                 Next
